@@ -1,15 +1,32 @@
 from aiogram.utils import executor
 import logging
-from config import bot, dispatcher, COINGECKO_API_URL
+from config import bot, dispatcher, COINGECKO_API_URL, ADMINS
 import requests
 from aiogram import types
+
+curs = 0
+comsa = 0
 
 
 @dispatcher.message_handler(commands=['start'])
 async def start(message: types.Message):
-    await message.reply(
-        "Привет! Я бот для отслеживания цены Litecoin. Используйте команду "
-        "/price, чтобы получить текущую цену Litecoin, или отправьте мне количество Litecoin для конвертации в USD.")
+    if message.from_user.id in ADMINS:
+        await message.answer("чтобы поменять курс и комсу надо ввести\n"
+                             "/set курс комса (пробел обязательно)")
+    else:
+        await message.reply(
+            "Привет! Я бот для отслеживания цены Litecoin. Используйте команду "
+            "/price, чтобы получить текущую цену Litecoin, или отправьте мне количество Litecoin для конвертации в USD.")
+
+
+@dispatcher.message_handler(commands=['set'])
+async def set_comsa_and_curs(message: types.Message):
+    if message.from_user.id in ADMINS:
+        mess = message.text.split()
+        global curs, comsa
+        curs = int(mess[1])
+        comsa = int(mess[2])
+        await message.answer("курс и комса поменялись")
 
 
 @dispatcher.message_handler(commands=['price'])
@@ -31,7 +48,7 @@ async def convert_to_usd(message: types.Message):
         if response.status_code == 200:
             data = response.json()
             litecoin_price = data.get('litecoin', {}).get('usd', 'N/A')
-            usd_value = int(litecoin_amount * litecoin_price * 454) + 600
+            usd_value = int(litecoin_amount * litecoin_price * curs) + comsa
             await message.reply(f"{usd_value:,}")
         else:
             await message.reply("Не удалось получить цену Litecoin. Пожалуйста, попробуйте снова позже.")
